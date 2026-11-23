@@ -1,4 +1,4 @@
-# Certain Minds in an Uncertain World? Computational signatures of belief updating in individuals holding radical attitudes
+# Certain Minds in an Uncertain World? Computational Signatures of Belief Updating in Individuals Holding Radical Attitudes
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.XXXXXXX.svg)](https://doi.org/10.5281/zenodo.XXXXXXX)
 
