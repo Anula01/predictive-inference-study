@@ -1,0 +1,47 @@
+cff-version: 1.2.0
+message: "If you use this code or data, please cite it using the metadata below."
+type: software
+title: "Analysis code and data for: Certain Minds in an Uncertain World? Exploring Computational Signatures of Belief Updating in Individuals Holding Radical Attitudes"
+authors:
+  - family-names: Knorr
+    given-names: Anna
+    affiliation: "Institute of Psychology, Jagiellonian University, Krakow, Poland"
+    email: anna.knorr@uj.edu.pl
+    orcid: "https://orcid.org/0000-0002-5344-9886"
+  - family-names: Podolin
+    given-names: Nikita
+    affiliation: "Department of Child and Adolescent Psychiatry, Psychosomatics and Psychotherapy, Centre of Mental Health, University of Wuerzburg, Wuerzburg, Germany; Max Planck Institute for Human Cognitive and Brain Sciences, Leipzig, Germany"
+    orcid: "https://orcid.org/0000-0001-5258-3023"
+  - family-names: Starlinger
+    given-names: Alexander
+    affiliation: "Department of Psychology, Helmut Schmidt University, Hamburg, Germany"
+    orcid: "https://orcid.org/0000-0002-6952-5521"
+  - family-names: Kossowska
+    given-names: Małgorzata
+    affiliation: "Institute of Psychology, Jagiellonian University, Krakow, Poland"
+    orcid: "https://orcid.org/0000-0001-5509-4196"
+  - family-names: Mikuš
+    given-names: Nace
+    affiliation: "Interacting Minds Centre, Aarhus University, Aarhus, Denmark"
+    orcid: "https://orcid.org/0000-0002-3445-9464"
+repository-code: "https://github.com/Anula01/predictive-inference-study"
+license: MIT  # code license; must match the LICENSE file in the repository (data: CC-BY-4.0, state it in the README)
+version: "1.0.0"  # must match the GitHub release tag
+date-released: "2026-11-23"  # update to the actual release date (YYYY-MM-DD)
+# doi: "10.5281/zenodo.XXXXXXX"  # add after Zenodo has minted the DOI (see note below)
+keywords:
+  - predictive inference
+  - radical attitudes
+  - dogmatism
+  - authoritarianism
+  - confidence
+  - hierarchical Gaussian filter
+  - belief updating
+# After paper is published, the article as the preferred citation will be added here:
+# preferred-citation:
+#   type: article
+#   title: "..."
+#   authors: [same list as above]
+#   journal: "..."
+#   year: 2027
+#   doi: ""

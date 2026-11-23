@@ -1,0 +1,508 @@
+```{r}
+library(tidyverse)
+library(dplyr)
+library(lme4)
+library(readr)
+```
+
+Helper Functions
+
+```{r}
+circDiff_abs <- function(a, b) {
+  d <- abs(a - b)
+  valid <- !is.na(d)
+  d[valid & d > 180] <- 360 - d[valid & d > 180]
+  return(d)
+}
+```
+
+# 0. Filter data by date ( if applicable)
+
+```{r}
+experiment_phase <- "L122136"
+
+quest <- read.csv(paste0("../../data/",experiment_phase,"/cleaned/questionnaire_clean.csv"))
+
+file_name <- paste0("../../data/",experiment_phase,"/cleaned/task_clean.csv")
+task <- read.csv(file_name)
+```
+
+
+# 1. Behavioural Task
+
+```{r}
+n_subjects <- length(unique(task$subject_id))
+paste("N subjects:", n_subjects)
+```
+
+## 1.1 Check confidence distribution
+
+```{r}
+hist(task$Confidence, main = "Confidence", xlab = "Confidence", breaks = 10)
+```
+
+
+## 1.2 Check confidence across noise conditions
+
+*(Confidence should be lower in high noise condition)*
+
+```{r}
+## Exlude trials where the mean switched
+task_noSwitch <- task %>% filter(Event == 0)
+
+
+## Plot confidence by noise condition
+ggplot(task_noSwitch, aes(x = Noise_Condition, y = Confidence)) +
+  geom_point(alpha = 0.2, position = position_jitter(width = 0.15)) +
+  geom_boxplot(alpha = 0.2, outlier.shape = NA) +
+  
+  labs(
+    title = "Confidence by Noise Condition",
+    x = "Noise Condition",
+    y = "Confidence"
+  ) +
+  
+  theme_minimal(base_size = 14)
+
+
+ggplot(task_noSwitch, aes(x = Confidence)) +
+  geom_histogram() +
+  facet_wrap(~ Noise_Condition) +
+  labs(
+    title = "Confidence by Noise Condition",
+    x = "Noise Condition",
+    y = "Confidence"
+  ) +
+  
+  theme_minimal(base_size = 14)
+
+
+
+# Model confidence as predicted by noise condition
+model <- lmer(Confidence ~ Noise_Condition + (1 | subject_id),
+              data = task_noSwitch, REML = TRUE)
+
+effectsize::effectsize(model)
+
+rm(task_noSwitch)
+```
+
+## 1.3 Check inference of hidden mean across noise conditions
+*(Inference of the hidden mean should be more difficult for the higher noise condition, thus we expect a larger difference between the true hidden mean of the coin and the participants' bucket.position. The underlying assumption is that participants position their buckets to the position where they expect to maximise the catch rate, that is, centered around the true mean.)*
+
+```{r}
+task_filtered <- task %>%
+  mutate(mean_inference = circDiff_abs(Mean, Bucket.Position))
+
+
+# Plot
+task_filtered %>%
+  ggplot(aes(x = Noise_Condition, y = mean_inference)) +
+  geom_point(alpha = 0.2, position = position_jitter(width = 0.15)) +
+  geom_boxplot(alpha = 0.2, outlier.shape = NA) +
+  
+  labs(
+    title = "Inference of Hidden Mean by Noise Condition",
+    x = "Noise Condition",
+    y = "Mean Inference"
+    ) +
+  
+  theme_minimal(base_size = 14)
+
+# Model
+model <- lmer(mean_inference ~ Noise_Condition + (1 | subject_id),
+                data = task_filtered, REML = TRUE)
+summary(model)
+effectsize::effectsize(model)
+
+rm(task_filtered)
+```
+
+## 1.4 Check confidence before and after mean switch across noise conditions
+*(Confidence should be lower after mean switch)*
+
+```{r}
+confidence_summary <- task %>%
+  arrange(subject_id, ID) %>%
+  mutate(PreviousEvent = lag(Event, default = 0)) %>%
+  filter(Event == 1 | PreviousEvent == 1) %>%
+  mutate(SwitchType = factor(ifelse(Event == 1, "After Switch", "Before Switch"),
+                             levels = c("Before Switch", "After Switch"))) %>%
+  group_by(Noise_Condition, SwitchType) %>%
+  summarise(MeanConfidence = mean(Confidence, na.rm = TRUE), .groups = "drop")
+
+print(confidence_summary)
+
+rm(confidence_summary)
+```
+
+## 1.5 Check mean catch rate across noise conditions 
+
+```{r}
+# Summarise mean catch rate by experiment and noise
+catch_rate_summary <- task %>%
+  group_by(Noise_Condition) %>%
+  summarise(MeanCatchRate = mean(Caught, na.rm = TRUE), .groups = "drop") %>%
+  tidyr::pivot_wider(names_from = Noise_Condition, values_from = MeanCatchRate, names_prefix = "Catch_Rate__")
+
+print(catch_rate_summary)
+
+# Catch rate per stage per participant
+catch_rate_summary_id <- task %>%
+  mutate(
+    Stage = as.factor(Stage)
+  ) %>%
+  group_by(Noise_Condition, subject_id, Stage) %>%
+  summarise(MeanCatchRate = mean(Caught, na.rm = TRUE), .groups = "drop")
+
+# Plot: catch rate across stages
+catch_rate_summary_id %>%
+  ggplot(aes(x = Stage, y = MeanCatchRate, group = subject_id, color = subject_id)) +
+  geom_point() +
+  geom_line() +
+  facet_wrap(~Noise_Condition) +
+  theme_classic() + 
+  theme(legend.position = "none")
+
+
+rm(catch_rate_summary, catch_rate_summary_id)
+```
+
+## More noise condition effects
+
+```{r}
+# Create behavioural variables for task manipulation checks
+task_check_df <- task %>%
+  group_by(subject_id, Stage) %>%
+  mutate(
+    Bucket.Position.Next = lead(Bucket.Position),
+    action = circDiff_abs(Bucket.Position.Next, Bucket.Position),
+    pe = circDiff_abs(Bucket.Position, Angle)
+  ) %>%
+  ungroup()
+
+
+# Descriptive summaries by noise condition
+task_check_summary <- task_check_df %>%
+  group_by(Noise_Condition) %>%
+  summarise(
+    mean_caught = mean(Caught, na.rm = TRUE),
+    mean_reward = mean(Reward, na.rm = TRUE),
+    mean_abs_pe = mean(abs(pe), na.rm = TRUE),
+    mean_abs_action = mean(abs(action), na.rm = TRUE),
+    mean_conf = mean(Confidence, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+print(task_check_summary)
+
+
+# Models
+model_caught <- glmer(
+  Caught ~ Noise_Condition + (1 | subject_id),
+  data = task_check_df,
+  family = binomial
+)
+
+model_reward <- lmer(
+  Reward ~ Noise_Condition + (1 | subject_id),
+  data = task_check_df,
+  REML = TRUE
+)
+
+model_pe <- lmer(
+  abs(pe) ~ Noise_Condition + (1 | subject_id),
+  data = task_check_df,
+  REML = TRUE
+)
+
+model_action <- lmer(
+  abs(action) ~ Noise_Condition + (1 | subject_id),
+  data = task_check_df,
+  REML = TRUE
+)
+
+model_conf <- lmer(
+  Confidence ~ Noise_Condition + (1 | subject_id),
+  data = task_check_df,
+  REML = TRUE
+)
+
+
+# Print model results
+parameters::parameters(model_caught)
+parameters::parameters(model_reward)
+parameters::parameters(model_pe)
+parameters::parameters(model_action)
+parameters::parameters(model_conf)
+```
+
+## 1.8 Check PE-confidence and action-confidence coupling
+
+```{r}
+mod_df <- read_csv("../../data/L122136/cleaned/modelling_data.csv")
+
+print("Overall sensitivity:")
+actConf<-lmer(pe_sc ~ 0 + conf_sc + (0 + conf_sc |subject_id),
+              data=mod_df)
+parameters::parameters(actConf)
+coef(actConf)$subject_id
+
+
+print("Overall confidence-action-coupling:")
+actConf<-lmer(action_sc ~ 0 + conf_sc + (0 + conf_sc |subject_id),
+              data=mod_df)
+parameters::parameters(actConf)
+
+
+
+cat("\n\n\n\nRanked regressions\n\n")
+
+print("Overall sensitivity:")
+actConf<-lmer(pe_rank_sc ~ 0 + conf_rank_sc + (0 + conf_rank_sc |subject_id),
+              data=mod_df)
+parameters::parameters(actConf)
+
+
+print("Overall confidence-action-coupling:")
+actConf<-lmer(action_rank_sc ~ 0 + conf_rank_sc + (0 + conf_rank_sc |subject_id),
+              data=mod_df)
+parameters::parameters(actConf)
+
+```
+
+### Check for Low Noise Condition separately
+
+```{r}
+print("Overall sensitivity:")
+actConf<-lmer(pe_sc ~ 0 + conf_sc + (0 + conf_sc |subject_id),
+              data=mod_df %>% filter(Noise_Condition=="Low_Noise")
+              )
+parameters::parameters(actConf)
+coef(actConf)$subject_id
+
+
+print("Overall confidence-action-coupling:")
+actConf<-lmer(action_sc ~ 0 + conf_sc + (0 + conf_sc |subject_id),
+              data=mod_df %>% filter(Noise_Condition=="Low_Noise")
+              )
+parameters::parameters(actConf)
+
+
+
+cat("\n\n\n\nRanked regressions\n\n")
+
+print("Overall sensitivity:")
+actConf<-lmer(pe_rank_sc ~ 0 + conf_rank_sc + (0 + conf_rank_sc |subject_id),
+              data=mod_df %>% filter(Noise_Condition=="Low_Noise")
+              )
+parameters::parameters(actConf)
+
+
+print("Overall confidence-action-coupling:")
+actConf<-lmer(action_rank_sc ~ 0 + conf_rank_sc + (0 + conf_rank_sc |subject_id),
+              data=mod_df %>% filter(Noise_Condition=="Low_Noise")
+              )
+parameters::parameters(actConf)
+
+```
+
+### Check residual distribution / normality
+
+```{r}
+plot(mod_df$pe_sc, mod_df$conf_sc)
+plot(mod_df$pe_rank_sc, mod_df$conf_rank_sc)
+
+## Check residuals
+meta_sens <- lmer(pe_sc ~ 0 + conf_sc + (0 + conf_sc |subject_id),
+              data=mod_df)
+hist(resid(meta_sens))
+qqnorm(resid(meta_sens))
+qqline(resid(meta_sens))
+
+meta_sens_rank <- lmer(pe_rank_sc ~ 0 + conf_rank_sc + (0 + conf_rank_sc |subject_id),
+              data=mod_df)
+hist(resid(meta_sens_rank))
+qqnorm(resid(meta_sens_rank))
+qqline(resid(meta_sens_rank))
+
+
+# rm(mod_df, actConf, confidence)
+```
+
+### Plot scatter between PE and confidence for 10 subjects
+
+```{r}
+subjects <- sample(unique(mod_df$subject_id),10)
+for (s in subjects){
+  df <- mod_df %>% filter(subject_id == s)
+  plot(df$pe, df$conf, title(main = "Raw"))
+  plot(df$pe_rank_sc,df$conf_rank_sc, title(main = "Ranked"))
+}
+```
+
+## 1.9 Check rewards
+
+```{r}
+rewards_df <- task %>%
+  group_by(subject_id, Noise_Condition) %>%
+  summarise(
+  Reward_total = sum(Reward)
+)
+
+ggplot(rewards_df, aes(x = Reward_total, y = after_stat(density))) +
+  geom_histogram(color = "white", fill = "#fed789", binwidth = 300) +
+  geom_density(color = "#5a8297", linewidth = 1) +
+  facet_wrap(~ Noise_Condition) +
+  labs(x ='Noise Condition', y='N', title = 'Rewards by Noise') + 
+  theme_classic()
+
+
+rewards_df <- task %>%
+  group_by(subject_id) %>%
+  summarise(
+  Reward_total = sum(Reward)
+)
+
+ggplot(rewards_df, aes(x = Reward_total, y = after_stat(density))) +
+  geom_histogram(color = "white", fill = "#fed789", binwidth = nrow(rewards_df)) +
+  geom_density(color = "#5a8297", linewidth = 1) +
+  labs(x ='Noise Condition', y='N', title = 'Total Rewards') + 
+  theme_classic()
+
+
+n_negatives <- round(nrow(rewards_df %>% filter(Reward_total > 0)) / nrow(rewards_df) * 100)
+n_positives <- round(nrow(rewards_df %>% filter(Reward_total < 0)) / nrow(rewards_df) * 100)
+
+paste("Positive rewards:", n_negatives, "%")
+paste("Negative rewards:", n_positives, "%")
+
+rm(rewards_df, n_negatives, n_positives)
+```
+
+### Rewards over time
+
+```{r}
+engagement_df2 <- task %>%
+  mutate(ID = ID + Stage * 100) %>%
+  group_by(ID) %>%
+  mutate(
+    catch_scaled = scale(Caught),
+    reward_scaled = scale(Reward)
+  ) %>%
+  summarise(
+  Catch = mean(catch_scaled),
+  Reward = mean(reward_scaled)
+)
+
+engagement_df2 <- engagement_df2 %>% mutate(
+  Catch = round(Catch * 10**(17), 4),
+  Reward = round(Reward * 10**(17), 4)
+)
+
+
+
+ggplot(engagement_df2, aes(x = ID, y = Catch)) +
+  geom_point(color = "#fed789", size = 2) +
+  geom_line(color = "#fed789", linewidth = 1) +
+  geom_smooth(method = "lm", se = TRUE, color = "#3C304B") +
+  
+  labs(x ='Trial N', y='Mean Catches', title = 'Mean Catches across trials (scaled within participants)') +
+  ylim(c(-20,20)) +
+
+  theme_classic()
+
+
+ggplot(engagement_df2, aes(x = ID, y = Reward)) +
+  geom_point(color = "#5a8297", size = 2) +
+  geom_line(color = "#5a8297", linewidth = 1) +
+  geom_smooth(method = "lm", se = TRUE, color = "#3C304B") +
+  
+  labs(x ='Trial N', y='Mean Reward', title = 'Mean Rewards across trials (scaled within participants)') +
+  ylim(c(-15,15)) +
+  
+  theme_classic()
+
+rm(engagement_df2)
+```
+
+# 2. Mood survey
+
+```{r, fig.width=14, fig.height=6}
+mood <- read.csv("../../data/L122136/cleaned/mood_clean.csv")
+
+
+keys <- c("subject_id" = "subject_id",
+          "Stage"       = "Stage",
+          "ID"= "ID")
+task_sel <- task[, c("subject_id", "ID", "Stage", "Noise_Condition")]
+mood <- left_join(mood, task_sel, by = keys)
+mood <- drop_na(mood) %>%
+  mutate(ID = ID + Stage * 100) %>%
+  group_by(subject_id) %>%
+  mutate(
+    engagement_scaled = scale(Engagement.Level),
+    stress_scaled = scale(Stress.Level))
+
+
+ggplot(mood, aes(x = ID, y = Engagement.Level, group = subject_id, color = subject_id)) +
+  geom_point() +
+  geom_line() + 
+  facet_wrap(~ Noise_Condition) +
+  labs(
+    title = "Engagement by Trial and Noise",
+    x = "Trial",
+    y = "Engagement"
+  ) +
+  theme_minimal() + theme(legend.position = "none")
+
+
+ggplot(mood, aes(x = ID, y = Stress.Level, group = subject_id, color = subject_id)) +
+  geom_point() +
+  geom_line() + 
+  facet_wrap(~ Noise_Condition) +
+  labs(
+    title = "Stress Level by Trial and Noise",
+    x = "Trial",
+    y = "Stress"
+  ) +
+  theme_minimal() + theme(legend.position = "none")
+
+
+
+ggplot(mood, aes(x = ID, y = engagement_scaled, group = subject_id, color = subject_id)) +
+  geom_point() +
+  geom_line() + 
+  facet_wrap(~ Noise_Condition) +
+  labs(
+    title = "Engagement (Scaled) by Trial and Noise",
+    x = "Trial",
+    y = "Engagement scaled"
+  ) +
+  theme_minimal() + theme(legend.position = "none")
+
+
+ggplot(mood, aes(x = ID, y = stress_scaled, group = subject_id, color = subject_id)) +
+  geom_point() +
+  geom_line() + 
+  facet_wrap(~ Noise_Condition) +
+  labs(
+    title = "Stress (Scaled) by Trial and Noise",
+    x = "Trial",
+    y = "Stress scaled"
+  ) +
+  theme_minimal() + theme(legend.position = "none")
+
+
+model <- lmer(stress_scaled ~ Noise_Condition + (1|subject_id),
+                     data = mood, REML = T)
+summary(model)
+parameters::parameters(model)
+
+
+model <- lmer(engagement_scaled ~ Noise_Condition + (1|subject_id),
+                     data = mood, REML = T)
+summary(model)
+parameters::parameters(model)
+```
+

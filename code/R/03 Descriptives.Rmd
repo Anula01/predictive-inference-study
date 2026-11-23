@@ -1,0 +1,30 @@
+```{r}
+experiment_phase <- "L122136"
+task_clean <- read.csv(paste0("../../data/",experiment_phase,"/cleaned/task_clean.csv"))
+quest_clean <- read.csv(paste0("../../data/",experiment_phase,"/cleaned/questionnaire_clean.csv"))
+
+```
+
+# 1. Some desriptive stats
+
+```{r}
+## Gender
+cat("Gender:\n")
+table(quest_clean$gender)
+
+## Age
+cat("\n\nAge:\n")
+table(quest_clean$age)
+
+## Political Party
+cat("\n\nPolitical Party:\n")
+table(quest_clean$vote1)
+
+## Education
+cat("\n\nEducation (%):\n")
+table(quest_clean$edu) / length(quest_clean$edu) * 100
+
+```
+
+
+

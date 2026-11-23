@@ -1,0 +1,368 @@
+
+# Packages
+
+```{r}
+library(here)
+library(readr)
+library(dplyr)
+library(tidyverse)
+library(jsonlite)
+library(lme4)
+
+# renv::snapshot()
+
+```
+
+# 1. Data Preprocessing
+
+```{r}
+experiment_phase <- c("L122136")
+file_name <- paste0("../../data/",experiment_phase,"/experiment_results.csv")
+```
+
+
+## a) Task data
+
+```{r}
+task <- read_csv(file_name)
+names(task) <- make.names(names(task))
+task <- task %>%
+  rename(
+    experimentName = Experiment.Name,
+    subject_id = prolificPid
+    ) %>%
+  filter(experimentName %in% experiment_phase) %>%
+  mutate(
+    Caught = as.integer(Caught == "Yes"),
+    Angle = ifelse(Angle > 360, Angle - 360, Angle),
+    Noise_Condition = ifelse(Std == 12, "Low_Noise", "High_Noise")
+  ) 
+task$Noise_Condition <- factor(task$Noise_Condition, levels = c("Low_Noise","High_Noise"))
+
+
+## Include only participants with complete (300) trials
+participant_trial_counts <- task %>%
+  group_by(experimentName, subject_id) %>%
+  summarise(trials = n(), .groups = "drop") %>%
+  filter(trials == 300)
+
+task <- task %>%
+  semi_join(participant_trial_counts, by = c("experimentName", "subject_id")) %>%
+  select( -c(experimentName))
+
+
+```
+
+## b) Questionnaire data
+
+```{r}
+quest <- read_csv(paste0("../../data/",experiment_phase,"/questionnaire_data.csv"))
+
+names(quest) <- make.names(names(quest))
+
+quest <- quest %>%
+  rename(
+    education = edu,
+    subject_id = prolificPid
+    ) %>%
+  mutate(
+    age = abs(as.numeric(age))    # included some erroneous negative numbers; double-checked with Prolific
+  )
+
+quest <- quest %>%
+  filter(subject_id %in% unique(task$subject_id))
+
+## Recode questionnaire responses
+recode_values <- list(
+  education = c(
+    "Grammar school" = 1,
+    "High school or equivalent" = 2,
+    "Some college" = 3,
+    "Bachelor's degree" = 4,
+    "Master's degree" = 5,
+    "Doctoral Degree" = 6
+  ),
+  pi1_health = c(
+    "Health care should be paid for completely through the government" = 1,
+    "Health care should be paid for mostly through the government" = 2,
+    "Health care should be paid for half through the government and half by private insurance" = 3,
+    "Health care should be paid for mostly by private insurance" = 4,
+    "Health care should be paid for completely by private insurance" = 5
+  ),
+  pi2_immi = c(
+    "much more strictly than they are currently" = 5,
+    "somewhat more strictly than they are currently" = 4,
+    "in the same way they are dealt with currently" = 3,
+    "somewhat more leniently than they are currently" = 2,
+    "much more leniently than they are currently" = 1
+  ),
+  pi3_abort = c(
+    "Abortion should be legal in all cases" = 1,
+    "Abortion should be legal in most cases" = 2,
+    "Abortion should be legal in some cases" = 3,
+    "Abortion should be legal in only rare cases" = 4,
+    "Abortion should never be legal" = 5
+  ),
+  pi4_need = c(
+    "The government should play a much larger role in helping people in need" = 1,
+    "The government should play a somewhat larger role in helping people in need" = 2,
+    "The government's role in helping people in need should stay the same" = 3,
+    "The government should play a somewhat smaller role in helping people in need" = 4,
+    "The government should play a much smaller role in helping people in need" = 5
+  ),
+  pi5_id = c(
+    "Absolutely not" = 1,
+    "Probably not" = 2,
+    "Probably yes" = 3,
+    "Absolutely yes" = 4
+  ),
+  pi6_tax = c(
+    "Much too low" = 1,
+    "Somewhat too low" = 2,
+    "Just about right; neither too low nor too high" = 3,
+    "Somewhat too high" = 4,
+    "Much too high" = 5
+  ),
+  pi7_tort = c(
+    "Never" = 1,
+    "Only in extreme circumstances to prevent an impending terrorist act" = 2,
+    "Whenever it might yield useful information" = 3,
+    "All terrorists should be tortured" = 4
+  ),
+  pi8_aff = c(
+    "I am strongly in favor of affirmative action" = 1,
+    "I am slightly in favor of affirmative action" = 2,
+    "I am slightly against affirmative action" = 3,
+    "I am strongly against affirmative action" = 4
+  ),
+  pi9_rel = c(
+    "Laws should never be based on religious beliefs" = 1,
+    "Laws should be rarely based on religious beliefs" = 2,
+    "Laws should sometimes be based on religious beliefs" = 3,
+    "Laws should be mostly based on religious beliefs" = 4,
+    "Laws should be completely based on religious beliefs" = 5
+  )
+)
+
+for (var in names(recode_values)) {
+  quest[[var]] <- recode(quest[[var]], !!!recode_values[[var]])
+}
+
+
+quest <- quest %>%
+  semi_join(participant_trial_counts, by = c("experimentName", "subject_id"))  %>%
+  select( -c(experimentName))
+
+```
+
+## c) Mood data
+
+```{r}
+mood <- read.csv(paste0("../../data/", experiment_phase, "/mood_data.csv"))
+mood <- mood %>%
+  rename(
+    "ID" = "Trial.Number",
+    subject_id = prolificPid
+    ) %>%
+  filter(subject_id %in% unique(task$subject_id)) %>%
+  select(-Experiment.Name)
+
+```
+
+# 2. Apply exclusion filter
+
+```{r}
+## TECHNICAL EXCLUSIONS
+
+# Did not complete task/questionnaire
+exclusion_ids_incomplete <- setdiff(unique(task$subject_id), quest$subject_id)
+paste("N incomplete:", length(exclusion_ids_incomplete))
+
+# Confidence == 0 on any trial
+exclusion_ids_conf0 <- task %>%
+  filter(Confidence == 0) %>%
+  pull(subject_id) %>%
+  unique()
+
+paste("N confidence == 0:", length(exclusion_ids_conf0))
+
+# Check how many times confidence ratings can equal to the intital confidence by chance (alpha = .99)
+p <- 1/20 ## equal to all possible confidence ratings bw 5 and 100 with step size 5
+n_trials <- 30
+binom.test(n_trials, 300, p = p,
+           alternative = "greater")
+task_count <- task %>% filter(Initial.Confidence == Confidence) %>% count(subject_id)
+task_count %>% filter(n >= n_trials)
+exclusion_ids_initconf <- task_count %>%
+  filter(n >= n_trials) %>%
+  pull(subject_id) %>%
+  unique()
+paste("N conf == init.conf:", length(exclusion_ids_initconf))
+
+# Combine technical exclusions
+exclusion_ids <- union(exclusion_ids_incomplete,exclusion_ids_conf0)
+#exclusion_ids <- union(exclusion_ids,exclusion_ids_initconf)
+
+paste("Total technical exclusions:", length(exclusion_ids))
+
+
+
+## DEMOGRAPHICS AFTER TECHNICAL EXCLUSIONS
+
+quest_demographics <- quest %>%
+  filter(!subject_id %in% exclusion_ids) %>%
+  mutate(age = abs(as.numeric(age)))
+
+# Age
+summary(quest_demographics$age)
+sd(quest_demographics$age, na.rm = TRUE)
+
+# Gender
+table(quest_demographics$gender)
+prop.table(table(quest_demographics$gender)) * 100
+
+
+
+## 1. Did not pass attention check
+exclusion_ids_att <- quest %>%
+  filter((att1 != 7) | (att2 != 1)) %>%
+  pull(subject_id)
+
+exclusion_ids <- union(exclusion_ids, exclusion_ids_att)
+
+paste("N subjects to remove:", length(exclusion_ids_att))
+
+
+## 2. Did not adjust default confidence in > 60% of trials
+n_trials <- 300 * 0.6
+task_count <- task %>% filter(Initial.Confidence == Confidence) %>% count(subject_id)
+exclusion_ids_nonadjust <- task_count %>% filter(n > n_trials) %>% pull(subject_id)
+
+exclusion_ids <- union(exclusion_ids, exclusion_ids_nonadjust)
+paste("N subjects to remove:", length(exclusion_ids_nonadjust))
+
+
+## 3. > 0.5 correlation between default confidence and confidence 
+task$conf_sc <-ave(task$Confidence, task$subject_id, FUN=scale)
+task$def.conf_sc <-ave(task$Initial.Confidence, task$subject_id, FUN=scale)
+
+actConf<-lmer(def.conf_sc ~ 0 + conf_sc + (0 + conf_sc |subject_id),
+              data=task)
+corr_init_conf <- as.data.frame(coef(actConf)[[1]])
+exclusion_ids_05 <- row.names(corr_init_conf %>% filter(conf_sc > 0.50))
+
+exclusion_ids <- union(exclusion_ids, exclusion_ids_05)
+paste("N subjects to remove:", length(exclusion_ids_05))
+
+
+## 4. Lower mean confidence where the previous trial was correct compared to incorrect
+
+check_df <- task %>%
+  select(subject_id, ID, Stage, Caught, Confidence) %>%
+  group_by(subject_id, Stage) %>%
+  arrange(ID, .by_group = TRUE) %>%
+  mutate(
+    Next_Confidence = lead(Confidence)
+  ) %>%
+  drop_na(Next_Confidence)
+
+check_summary <- check_df %>%
+  group_by(subject_id, Caught) %>%
+  summarise(
+    m.conf = mean(Next_Confidence),
+    .groups = "drop"
+  ) %>%
+  pivot_wider(names_from = Caught, values_from = m.conf) %>%
+  mutate(diff = `1` - `0`)
+
+exclusion_ids_lowerconf <- check_summary %>%
+  filter(diff < 0) %>%
+  pull(subject_id)
+
+paste("N subjects to remove:", length(exclusion_ids_lowerconf))
+#exclusion_ids <- union(exclusion_ids, exclusion_ids_lowerconf)
+
+
+
+paste("Total N to remove:", length(exclusion_ids))
+```
+
+```{r}
+# Exclude subjects from individual data sets
+
+task <- task %>% filter(!(subject_id %in% exclusion_ids))
+quest <- quest %>% filter(!(subject_id %in% exclusion_ids))
+mood <- mood %>% filter(!(subject_id %in% exclusion_ids))
+
+```
+
+
+```{r}
+n_subjects <- length(unique(task$subject_id))
+paste("N subjects:", n_subjects)
+
+all(unique(task$subject_id) == unique(quest$subject_id))
+```
+
+# 3. Save the data
+
+```{r}
+write_csv(task, paste0("../../data/", experiment_phase, "/cleaned/task_clean.csv"))
+write_csv(quest, paste0("../../data/", experiment_phase, "/cleaned/questionnaire_clean.csv"))
+write_csv(mood, paste0("../../data/", experiment_phase, "/cleaned/mood_clean.csv"))
+
+# write_csv(allData, paste0("../../data/", experiment_phase, "/cleaned/combined_data_clean.csv"))
+```
+
+# 4. Prepare modelling data
+
+```{r}
+circDiff_abs <- function(a, b) {
+  d <- abs(a - b)
+  valid <- !is.na(d)
+  d[valid & d > 180] <- 360 - d[valid & d > 180]
+  return(d)
+}
+```
+
+```{r}
+# 1. Calculate action and PE
+mod_df <- task %>%
+  group_by(subject_id, Stage) %>% ### restrict calculations to blocks
+  mutate(
+    Bucket.Position.Next = lead(Bucket.Position),
+    action = circDiff_abs(Bucket.Position.Next, Bucket.Position),
+    pe = circDiff_abs(Bucket.Position, Angle),
+    conf = lead(Confidence) # For confidence, delete first trial, so that confidence(t1) aligns with pe(t0) and action(t0)
+  ) %>% filter(ID != 100) ### delete last trial of each block, since no action exists for block1, trial100 -> block2, trial1
+
+# 2. Calculate ranked action and pe
+mod_df <- mod_df %>%
+  group_by(subject_id) %>%
+  mutate(
+    ranked_PE = ave(pe, subject_id, FUN=rank),
+    ranked_conf = ave(conf, subject_id, FUN=rank),
+    ranked_action = ave(action, subject_id, FUN=rank)
+  )
+
+# 3. Scale behavioral variables
+mod_df$conf_sc <-ave(mod_df$conf, mod_df$subject_id, FUN=scale)
+mod_df$pe_sc <-ave(mod_df$pe, mod_df$subject_id, FUN=scale) 
+mod_df$action_sc <-ave(mod_df$action, mod_df$subject_id, FUN=scale) 
+
+mod_df$conf_rank_sc <- ave(mod_df$ranked_conf, mod_df$subject_id, FUN=scale)
+mod_df$pe_rank_sc <-ave(mod_df$ranked_PE, mod_df$subject_id, FUN=scale) 
+mod_df$action_rank_sc <-ave(mod_df$ranked_action, mod_df$subject_id, FUN=scale)
+
+# 4. Organize & clean df
+mod_df <- mod_df %>%
+  select(c(subject_id, Stage, ID, Mean, Angle, Bucket.Position, Caught, Noise_Condition,
+           pe, action, conf,
+           pe_sc, action_sc, conf_sc,
+           ranked_PE, ranked_action, ranked_conf,
+           pe_rank_sc, action_rank_sc, conf_rank_sc))
+
+# 5. Save modelling df
+write_csv(mod_df, "../../data/L122136/cleaned/modelling_data.csv")
+```
+

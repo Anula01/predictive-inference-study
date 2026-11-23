@@ -1,0 +1,553 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
+```{r}
+library(tidyverse)
+library(dplyr)
+library(psych)
+library(lavaan)
+library(scales)
+```
+
+# Load data
+
+```{r}
+questionnaire <- read.csv(
+  file.path("..", "..", "data", "L122136", "cleaned", "questionnaire_clean.csv"),
+  stringsAsFactors = FALSE
+)
+
+```
+
+# 1. Factor solution (item-based)
+
+```{r}
+items_df <- questionnaire %>%
+  select(
+    starts_with(c(
+      "rwa",
+      "secs",
+      "pi",
+      "lc",
+      "lwa",
+      "bs",
+      "dog",
+      "demo_id",
+      "repub_id"
+    )))
+rownames(items_df) <- questionnaire$subject_id
+items_df <- na.omit(items_df)
+
+## Run parallel analysis to determine amount of factors
+fa.parallel(items_df, fm = "ml", fa = "fa")
+
+## Run lavaan-based EFA for robust fit indices
+fit_efa <- lavaan::efa(
+  data = as.data.frame(scale(items_df)),
+  estimator="MLR",
+  nfactors = 3:8
+)
+
+summary(fit_efa)
+fitMeasures(
+  fit_efa,
+  c("cfi.robust","tli.robust","rmsea.robust","srmr")
+)
+
+```
+
+# 2. Composite scores
+
+```{r}
+reverse_items <- c(
+  # Dogmatism
+  "dog2","dog4","dog5","dog7","dog10","dog11","dog13","dog16","dog18","dog19",
+  
+  # RWA
+  "rwa1","rwa3","rwa5","rwa7","rwa9","rwa11",
+  
+  # LWA
+  "lwa5","lwa6","lwa7","lwa8"
+)
+
+# reverse code
+questionnaire <- questionnaire %>%
+  mutate(across(all_of(reverse_items), ~ 8 - .))
+
+```
+
+```{r}
+items_df <- questionnaire %>%
+  select(
+    starts_with(c(
+      "rwa",
+      "secs",
+      "pi",
+      "lc",
+      
+      "lwa",
+      "bs",
+      "dog",
+      
+      "demo_id",
+      "repub_id",
+      "cm",
+      "ius"
+    ))
+  )
+rownames(items_df) <- questionnaire$subject_id
+items_df <- na.omit(items_df)
+
+
+composites_df <- items_df %>%
+  mutate(
+    DOG  = rowMeans(across(starts_with("dog")),  na.rm = TRUE),
+    RWA  = rowMeans(across(starts_with("rwa")),  na.rm = TRUE),
+    LWA  = rowMeans(across(starts_with("lwa")),  na.rm = TRUE),
+    SECS = rowMeans(across(starts_with("secs")), na.rm = TRUE),
+    PI   = rowMeans(across(starts_with("pi")),   na.rm = TRUE),
+    BS   = rowMeans(across(starts_with("bs")),   na.rm = TRUE),
+    LC   = rowMeans(across(starts_with("lc")),   na.rm = TRUE),
+    CM   = rowMeans(across(starts_with("cm")),   na.rm = TRUE),
+    IUS  = rowMeans(across(starts_with("ius")),  na.rm = TRUE)
+  ) %>%
+  select(
+    -starts_with("dog", ignore.case = FALSE),
+    -starts_with("rwa", ignore.case = FALSE),
+    -starts_with("lwa", ignore.case = FALSE),
+    -starts_with("sdo", ignore.case = FALSE),
+    -starts_with("secs", ignore.case = FALSE),
+    -starts_with("pi", ignore.case = FALSE),
+    -starts_with("bs", ignore.case = FALSE),
+    # -starts_with("lc", ignore.case = FALSE),
+    -starts_with("cm", ignore.case = FALSE),
+    -starts_with("ius", ignore.case = FALSE)
+  )
+
+composites_df <- as.data.frame(scale(composites_df))
+```
+
+Scale properties
+
+```{r scale-properties}
+scale_items <- list(
+  DOG  = c("dogx", "dogz", paste0("dog", 1:20)),
+  RWA  = paste0("rwa", 1:12),
+  LWA  = paste0("lwa", 1:8),
+  SECS = paste0("secs", 1:12),
+  PI   = c("pi1_health", "pi2_immi", "pi3_abort", "pi4_need", "pi5_id",
+           "pi6_tax", "pi7_tort", "pi8_aff", "pi9_rel"),
+  BS   = c("bs1_health", "bs2_immi", "bs3_abort", "bs4_need", "bs5_id",
+           "bs6_tax", "bs7_tort", "bs8_aff", "bs9_rel"),
+  LC   = c("lc_gen", "lc_eco", "lc_soc"),
+  CM   = paste0("cm", 1:5),
+  IUS  = paste0("ius", 1:12)
+)
+
+# keep only variables that actually exist in questionnaire
+scale_items <- lapply(scale_items, function(x) x[x %in% names(questionnaire)])
+
+scale_properties <- function(data, items, scale_name) {
+  
+  dat_items <- data %>%
+    select(all_of(items)) %>%
+    mutate(across(everything(), as.numeric))
+  
+  scale_score <- rowMeans(dat_items, na.rm = TRUE)
+  scale_score[rowSums(!is.na(dat_items)) == 0] <- NA
+  
+  alpha_val <- if (length(items) >= 2) {
+    tryCatch(
+      psych::alpha(dat_items, warnings = FALSE, check.keys = FALSE)$total$raw_alpha,
+      error = function(e) NA_real_
+    )
+  } else {
+    NA_real_
+  }
+  
+  omega_val <- if (length(items) >= 3) {
+    tryCatch(
+      psych::omega(dat_items, nfactors = 1, plot = FALSE, warnings = FALSE)$omega.tot,
+      error = function(e) NA_real_
+    )
+  } else {
+    NA_real_
+  }
+  
+  mean_interitem_r <- if (length(items) >= 2) {
+    cors <- cor(dat_items, use = "pairwise.complete.obs")
+    mean(cors[upper.tri(cors)], na.rm = TRUE)
+  } else {
+    NA_real_
+  }
+  
+  tibble(
+    scale = scale_name,
+    n_items = length(items),
+    n_complete = sum(complete.cases(dat_items)),
+    mean = mean(scale_score, na.rm = TRUE),
+    sd = sd(scale_score, na.rm = TRUE),
+    min = min(scale_score, na.rm = TRUE),
+    max = max(scale_score, na.rm = TRUE),
+    alpha = alpha_val,
+    omega_total = omega_val,
+    mean_interitem_r = mean_interitem_r
+  )
+}
+
+scale_props <- bind_rows(
+  lapply(names(scale_items), function(scale_name) {
+    scale_properties(
+      data = questionnaire,
+      items = scale_items[[scale_name]],
+      scale_name = scale_name
+    )
+  })
+)
+
+scale_props %>%
+  mutate(across(where(is.numeric), ~ round(.x, 3)))
+```
+
+# 3. Factor solution (composite-score-based)
+
+```{r}
+fa_df <- composites_df %>% select(-c("IUS","CM","LC"))
+
+fit_efa <- lavaan::efa(
+  data = fa_df,
+  estimator="MLR",
+  nfactors = 2:4
+)
+
+summary(fit_efa)
+print(fitMeasures(fit_efa,c("cfi.robust", "tli.robust", "rmsea.robust", "srmr")))
+```
+
+```{r}
+# Refit only the 3-factor solution as a lavaan object
+fit_efa_3 <- lavaan::efa(
+  data = fa_df,
+  estimator = "MLR",
+  nfactors = 3,
+  output = "lavaan"
+)
+
+# Extract factor scores
+efa_scores_3 <- lavPredict(fit_efa_3)
+efa_scores_3 <- as.data.frame(efa_scores_3)
+names(efa_scores_3) <- c("FA_PO", "FA_DOG", "FA_AUTH")
+```
+
+```{r, fig.height=5, fig.width=7, dev ="pdf"}
+plot_efa3_loadings <- function(fit_efa_3, factor_labels = NULL,
+                               y_limits = c(-.9, .9)) {
+  
+  scale_colours <- c(
+    "Political orientation" = "#D55E00",
+    "Voting identification" = "#CC79A7",
+    "SECS"                  = "#0072B2",
+    "RWA"                   = "#F0E442",
+    "LWA"                   = "#56B4E9",
+    "Political issues"      = "#009E73",
+    "Belief superiority"    = "#999999",
+    "Dogmatism"             = "#E69F00"
+  )
+  
+  item_labels <- c(
+    "lc_gen"   = "General ideology",
+    "lc_eco"   = "Economic ideology",
+    "lc_soc"   = "Social ideology",
+    "demo_id"  = "Democrat ID",
+    "repub_id" = "Republican ID",
+    "DOG"      = "Dogmatism",
+    "RWA"      = "RWA",
+    "LWA"      = "LWA",
+    "SECS"     = "SECS",
+    "PI"       = "Political issues",
+    "BS"       = "Belief superiority"
+  )
+  
+  loading_long <- lavaan::standardizedSolution(
+    fit_efa_3,
+    type = "std.all"
+  ) %>%
+    filter(op == "=~") %>%
+    transmute(
+      factor = lhs,
+      item = rhs,
+      loading = est.std,
+      scale = case_when(
+        item %in% c("lc_gen", "lc_eco", "lc_soc") ~ "Political orientation",
+        item %in% c("demo_id", "repub_id") ~ "Voting identification",
+        item == "DOG"  ~ "Dogmatism",
+        item == "RWA"  ~ "RWA",
+        item == "LWA"  ~ "LWA",
+        item == "SECS" ~ "SECS",
+        item == "PI"   ~ "Political issues",
+        item == "BS"   ~ "Belief superiority"
+      ),
+      item_label = recode(item, !!!item_labels),
+      scale = factor(scale, levels = names(scale_colours))
+    )
+  
+  item_order <- c(
+    "General ideology", "Economic ideology", "Social ideology",
+    "Democrat ID", "Republican ID",
+    "SECS", "RWA", "LWA", "Political issues",
+    "Belief superiority", "Dogmatism"
+  )
+  
+  factor_order <- unique(loading_long$factor)
+  
+  factor_titles <- setNames(
+    paste("Factor", seq_along(factor_order)),
+    factor_order
+  )
+  
+  if (!is.null(factor_labels)) {
+    labels_available <- factor_labels[factor_order]
+    has_label <- !is.na(labels_available)
+    factor_titles[has_label] <- paste0(
+      factor_titles[has_label], ": ", labels_available[has_label]
+    )
+  }
+  
+  loading_long %>%
+    mutate(
+      item_label = factor(item_label, levels = item_order),
+      factor = factor(factor, levels = factor_order)
+    ) %>%
+    ggplot(aes(x = item_label, y = loading, fill = scale)) +
+    geom_hline(yintercept = 0, colour = "grey50", linewidth = .35) +
+    geom_col(width = .75) +
+    scale_fill_manual(values = scale_colours, name = NULL) +
+    guides(fill = guide_legend(ncol = 1, byrow = TRUE)) +
+    coord_cartesian(ylim = y_limits) +
+    facet_wrap(
+      ~ factor,
+      ncol = 1,
+      labeller = labeller(factor = factor_titles)
+    ) +
+    labs(x = NULL, y = "Standardized factor loading") +
+    theme_classic(base_size = 12) +
+    theme(
+      axis.text.x = element_blank(),
+      axis.ticks.x = element_blank(),
+      strip.background = element_blank(),
+      strip.text = element_text(face = "bold", hjust = 0),
+
+      legend.position = "right",
+      legend.justification = "bottom",
+      legend.text = element_text(size = 10),
+      legend.key.height = unit(.3, "cm"),
+      legend.key.width = unit(.3, "cm"),
+      legend.spacing.x = unit(.15, "cm"),
+      legend.margin = margin(0, 0, 0, 0),
+
+      panel.spacing = unit(1.2, "lines")
+    )
+}
+
+efa3_plot <- plot_efa3_loadings(
+  fit_efa_3,
+  factor_labels = c(
+    f1 = "Political Orientation",
+    f2 = "Dogmatic Intolerance",
+    f3 = "Authoritarianism"
+  )
+)
+
+efa3_plot
+
+
+ggsave(
+  filename = "fig1.png",
+  plot = efa3_plot,
+  width = 7, height = 5, units = "in",
+  dpi = 300,
+  device = "png"
+)
+```
+
+
+
+```{r efa-loadings-figure, fig.width=6.5, fig.height=4.6, dpi=300, out.width="100%", fig.align="center", dev="ragg_png"}
+fig_w <- 6.5
+fig_h <- 4.6
+
+ink   <- "#263341"
+muted <- "#5B6875"
+rule  <- "#D5DBE1"
+band  <- "#F4F6F8"
+
+col_att <- c(
+  "Dogmatic intolerance" = "#245A76",
+  "Authoritarianism"     = "#BC633F"
+)
+
+theme_fig <- function(base_size = 10) {
+  theme_minimal(base_size = base_size) +
+    theme(
+      text             = element_text(colour = ink),
+      axis.text        = element_text(colour = muted),
+      axis.title       = element_text(colour = ink),
+      axis.ticks       = element_blank(),
+      panel.grid.minor = element_blank(),
+      plot.margin      = margin(4, 8, 4, 4)
+    )
+}
+
+
+fmt_loading <- function(x) {
+  gsub("-", "\u2212", sub("^(-?)0\\.", "\\1.", sprintf("%.2f", x)))
+}
+
+plot_efa3_loadings <- function(
+    fit_efa_3,
+    factor_labels  = NULL,
+    factor_cols    = c(f1 = "#6E8B74",
+                       f2 = col_att[["Dogmatic intolerance"]],
+                       f3 = col_att[["Authoritarianism"]]),
+    loading_limits = c(-1.15, 1.15),
+    salient        = 0.30,     # |loading| below this is drawn faded
+    show_values    = FALSE     # TRUE = print the loading next to each bar
+) {
+
+  item_labels <- c(
+    "lc_gen"   = "General ideology",
+    "lc_eco"   = "Economic ideology",
+    "lc_soc"   = "Social ideology",
+    "demo_id"  = "Democrat ID",
+    "repub_id" = "Republican ID",
+    "DOG"      = "Dogmatism",
+    "RWA"      = "RWA",
+    "LWA"      = "LWA",
+    "SECS"     = "SECS",
+    "PI"       = "Political issues",
+    "BS"       = "Belief superiority"
+  )
+
+  item_order <- c(
+    "General ideology", "Economic ideology", "Social ideology",
+    "Democrat ID", "Republican ID",
+    "SECS", "RWA", "LWA", "Political issues",
+    "Belief superiority", "Dogmatism"
+  )
+  group_sizes <- c(3, 2, 6)
+  sep_y <- length(item_order) - cumsum(group_sizes)[-length(group_sizes)] + 0.5
+
+  loading_long <- lavaan::standardizedSolution(fit_efa_3, type = "std.all") %>%
+    filter(op == "=~") %>%
+    transmute(
+      factor     = lhs,
+      loading    = est.std,
+      item_label = recode(rhs, !!!item_labels)
+    )
+
+  stopifnot(all(loading_long$item_label %in% item_order))
+
+  factor_order <- unique(loading_long$factor)
+
+  factor_titles <- setNames(paste0("Factor ", seq_along(factor_order)),
+                            factor_order)
+  if (!is.null(factor_labels)) {
+    lab <- factor_labels[factor_order]
+    ok  <- !is.na(lab)
+    factor_titles[ok] <- paste0(factor_titles[ok], "\n", lab[ok])
+  }
+
+  fills <- factor_cols[factor_order]
+  fills[is.na(fills)] <- "#6B7A8F"
+  names(fills) <- factor_order
+
+  loading_long %>%
+    mutate(
+      item_label = factor(item_label, levels = item_order),
+      factor     = factor(factor, levels = factor_order),
+      is_salient = abs(loading) >= salient,
+      lab        = fmt_loading(loading),
+      lab_col    = if_else(is_salient, ink, muted)
+    ) %>%
+    ggplot(aes(x = loading, y = item_label, fill = factor)) +
+    geom_hline(yintercept = sep_y, colour = rule, linewidth = 0.3) +
+    geom_vline(xintercept = c(-salient, salient), colour = rule,
+               linewidth = 0.3, linetype = "dashed") +
+    geom_vline(xintercept = 0, colour = "#8996A2", linewidth = 0.4) +
+    geom_col(aes(alpha = is_salient), width = 0.68) +
+    {
+      if (show_values) {
+        geom_text(
+          aes(label = lab, colour = lab_col,
+              hjust = if_else(loading >= 0, -0.2, 1.2)),
+          size = 2.6
+        )
+      }
+    } +
+    facet_wrap(~ factor, nrow = 1, labeller = labeller(factor = factor_titles)) +
+    scale_fill_manual(values = fills, guide = "none") +
+    scale_alpha_manual(values = c(`TRUE` = 1, `FALSE` = 0.35), guide = "none") +
+    scale_colour_identity() +
+    scale_y_discrete(limits = rev(item_order)) +
+    scale_x_continuous(
+      breaks = c(-1, -0.5, 0, 0.5, 1),
+      labels = label_number(accuracy = 0.1, style_negative = "minus")
+    ) +
+    coord_cartesian(xlim = loading_limits) +
+    labs(x = "Standardised factor loading", y = NULL) +
+    theme_fig() +
+    theme(
+      panel.grid.major = element_blank(),
+      panel.spacing.x  = unit(12, "pt"),
+      axis.text.y      = element_text(colour = ink, size = 9),
+      axis.title.x     = element_text(margin = margin(t = 6)),
+      strip.text       = element_text(face = "bold", colour = ink,
+                                      size = rel(1), hjust = 0,
+                                      lineheight = 1.05,
+                                      margin = margin(b = 5))
+    )
+}
+
+efa3_plot <- plot_efa3_loadings(
+  fit_efa_3,
+  factor_labels = c(
+    f1 = "Political Orientation",
+    f2 = "Dogmatic Intolerance",
+    f3 = "Authoritarianism"
+  )
+)
+
+efa3_plot
+
+```
+
+
+
+# 4. Save
+
+```{r}
+factors_df <- round(cbind(composites_df,efa_scores_3),3)
+
+factors_df$subject_id <- rownames(factors_df)
+
+factors_df <- right_join(
+  questionnaire %>% select(c(subject_id,age,gender,education)),
+  factors_df,
+  by = "subject_id"
+  )
+
+
+# write_csv(factors_df,
+#      file = "../../data/L122136/cleaned/composites_data.csv")
+```
+
+
+
+
+
+
+
+
+
