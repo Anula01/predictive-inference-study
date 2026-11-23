@@ -145,9 +145,9 @@ Requirements: R 4.5.0 and the package versions recorded in `code/R/renv.lock`.
 3. Install the packages with `renv::restore()`.
 4. Open `05 Main analyses.Rmd` and knit it, or run all chunks from the top. The chunks depend on each other (the data are loaded in the first chunks), so run them in order. Data paths are relative (`../../data/...`), so run the file from `code/R/`, which is the default when knitting.
 
-Scripts `01`, `02` and `04` need raw or item-level data that cannot be shared, so they are included for transparency but cannot be rerun with this repository. `05 Main analyses.Rmd` runs from the shared files. Its supplementary analysis S1 (mood ratings and recent noise exposure) needs mood ratings that are not shared, so the corresponding code is commented out and S1 cannot be reproduced from the released data.
+Scripts `01`, `02` and `04` need raw or item-level data that cannot be shared, so they are included for transparency but cannot be rerun with this repository. `05 Main analyses.Rmd` runs from the shared files. 
 
-Main packages: `tidyverse`, `lme4`, `lmerTest`, `parameters`, `effectsize`, `Hmisc`, `HLMdiag`, `BayesFactor`.
+Main packages: `tidyverse`, `lme4`, `lmerTest`, `parameters`, `effectsize`, `Hmisc`, `HLMdiag`.
 
 **HGF estimation.** The HGF parameters were estimated with a hierarchical Bayesian implementation of the extended HGF in Stan (`code/R/models/ehgf_jget_full.stan`), which is fitted from R with `code/R/models/ModelEstimationWrapper.R` (function `run_model_fit()`, based on hBayesDM, using the package `rstan`). Sampling settings in the wrapper: 4 chains, `nIter` iterations per chain (default 2000), warm-up of one third of the iterations, `adapt_delta` = 0.95, `max_treedepth` = 17, seed 1450154637. The fitted model is saved as an `.rds` file, which is not part of this release. The wrapper expects a trial-level input table in a different format from the files shared here (with columns such as `ID`, `trials` and `session`); the shared files `HGF_Model_output.csv` and `Ehgf_taskData2.csv` contain the resulting estimates. The estimation code is included for transparency; preparing its input from the shared data is not documented here.
 
