@@ -1,7 +1,8 @@
 ---
 output:
-  pdf_document: default
+  word_document: default
   html_document: default
+  pdf_document: default
 ---
 # Predicitve Inference & Political Extremism
 
@@ -25,6 +26,7 @@ library(Hmisc)
 library(effectsize)
 library(HLMdiag)
 library(BayesFactor)
+library(scales)
 
 source("helper_functions.R")
 
