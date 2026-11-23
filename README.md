@@ -35,7 +35,7 @@ The task was a browser-based predictive-inference task.
 | Probability that the noise level switches at a mean change | .40 | `probStdChange` |
 | Confidence scale | 5–100%, steps of 5 | |
 
-Further configuration values (names as stored): `moodScreeningInterval` = 20, `maxNoChangeCount` = 30, `slowTrialCount` = 5, `slowTrialTimeout` = 15. Their exact behaviour is defined in the task software, which is not part of this release.
+Further configuration values: `moodScreeningInterval` = 20, `maxNoChangeCount` = 30, `slowTrialCount` = 5, `slowTrialTimeout` = 15.
 
 ## Repository structure
 
