@@ -22,7 +22,7 @@ The study and analyses were exploratory and were not preregistered.
 
 ## Task settings
 
-The task was a browser-based predictive-inference task. The settings below are the values stored in the task's configuration database (checked in November 2026); they correspond to the values reported in the paper.
+The task was a browser-based predictive-inference task. The settings below are the values stored in the task's configuration database; they correspond to the values reported in the paper.
 
 | Setting | Value | Configuration key |
 |---------|-------|-------------------|
