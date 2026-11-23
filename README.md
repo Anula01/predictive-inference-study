@@ -18,8 +18,6 @@ The analyses cover:
 - model-agnostic behaviour: mean inference, learning rate, confidence, metacognitive sensitivity and calibration,
 - computational modelling with the extended hierarchical Gaussian filter of Mikuš et al. (2025), and its association with radical attitudes.
 
-The study and analyses were exploratory and were not preregistered.
-
 ## Task settings
 
 The task was a browser-based predictive-inference task.
