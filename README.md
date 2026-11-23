@@ -69,7 +69,7 @@ Further configuration values: `maxNoChangeCount` = 30, `slowTrialCount` = 5, `sl
 
 ## Data
 
-Only the analysis files listed below are shared. Raw exports, item-level questionnaire responses (including clinical symptom measures), free-text answers, timestamps, mood ratings and pilot data are not shared to protect participants' privacy. Participant identifiers were replaced by random study IDs (`S001`, `S002`, ...), which are consistent across all files; Prolific IDs are not included and the mapping is not published.
+Only the analysis files listed below are shared. Raw exports are not shared to protect participants' privacy. Participant identifiers were replaced by random study IDs (`S001`, `S002`, ...), which are consistent across all files; Prolific IDs are not included and the mapping is not published.
 
 | File | Level | Participants | Rows | Content |
 |------|-------|--------------|------|---------|
