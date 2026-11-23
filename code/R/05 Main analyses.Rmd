@@ -1,7 +1,7 @@
 ---
 output: html_document
 ---
-# Predicitve Inference & Political Extremism
+# Predictive Inference & Political Extremism
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(
