@@ -6,11 +6,11 @@ Analysis code and data for the study **"Certain Minds in an Uncertain World? Exp
 
 - Preprint: TODO (PsyArXiv link / DOI)
 - Paper: TODO (journal DOI, after publication)
-- Task code (separate repository): https://github.com/Anula01/predictive-inference-task
+- Task software: see [Task software](#task-software) (the task code is not part of this release)
 
 ## Overview
 
-We tested how two dimensions of radical political attitudes, dogmatic intolerance and authoritarianism, relate to learning under uncertainty in a politically neutral predictive-inference task. 462 US adults (recruited via Prolific) were analysed. They completed 300 trials of a [predictive-inference task](https://github.com/Anula01/predictive-inference-task) in which they positioned a bucket to catch a particle, reported their confidence of catching it, and received feedback. Observational noise and occasional changes of the latent mean were manipulated.
+We tested how two dimensions of radical political attitudes, dogmatic intolerance and authoritarianism, relate to learning under uncertainty in a politically neutral predictive-inference task. 462 US adults (recruited via Prolific) were analysed. They completed 300 trials of a predictive-inference task in which they positioned a bucket to catch a particle, reported their confidence of catching it, and received feedback. Observational noise and occasional changes of the latent mean were manipulated.
 
 The analyses cover:
 
@@ -22,16 +22,20 @@ The study and analyses were exploratory and were not preregistered.
 
 ## Task settings
 
-| Setting | Value |
-|---------|-------|
-| Trials | 300 (3 blocks of 100) |
-| Bucket size | 36° |
-| Observational noise (SD of particle landing location) | 12° (low noise), 21° (high noise) |
-| Probability of a change in the latent mean (per eligible trial) | .10 |
-| Minimum trials between mean changes | 3 |
-| Minimum distance of a new mean from the previous mean | 12° |
-| Probability that the noise level switches at a mean change | .40 |
-| Confidence scale | 5–100%, steps of 5 (initial slider position randomized between 10% and 90%) |
+The task was a browser-based predictive-inference task. The settings below are the values stored in the task's configuration database (checked in November 2026); they correspond to the values reported in the paper.
+
+| Setting | Value | Configuration key |
+|---------|-------|-------------------|
+| Trials | 300 (3 blocks of 100) | `numBlocks`, `numTrialsPerBlock` |
+| Bucket size | 36° (fixed) | `bucketMaxSize`, `bucketSizeStatic` |
+| Observational noise (SD of particle landing location) | 12° (low noise), 21° (high noise) | `stdDefault`, `stdVolatile` |
+| Probability of a change in the latent mean (per eligible trial) | .10 | `probMeanChange` |
+| Minimum trials between mean changes | 3 | `minTrialsNoMeanChange` |
+| Minimum distance of a new mean from the previous mean | 12° | `minDiffNewMean` |
+| Probability that the noise level switches at a mean change | .40 | `probStdChange` |
+| Confidence scale | 5–100%, steps of 5 | |
+
+Further configuration values (names as stored): `moodScreeningInterval` = 20, `maxNoChangeCount` = 30, `slowTrialCount` = 5, `slowTrialTimeout` = 15. Their exact behaviour is defined in the task software, which is not part of this release.
 
 ## Repository structure
 
@@ -129,9 +133,9 @@ Main packages: `tidyverse`, `lme4`, `lmerTest`, `parameters`, `effectsize`, `Hmi
 
 TODO: describe how the HGF parameters were estimated (runtime, Stan settings) and how to rerun `models/ModelEstimationWrapper.R` on `modelling_data.csv`.
 
-## Related repositories
+## Task software
 
-**Task:** https://github.com/Anula01/predictive-inference-task (DOI: 10.5281/zenodo.YYYYYYY). This separate repository contains the browser-based implementation of the predictive-inference task that was used to collect the data. The present repository contains only the analysis of the data collected with it.
+The task was implemented as a web application hosted on Firebase, built by Ferdinand Wittmann and adapted from the predictive-inference task of [Seow & Gillan (2020)](https://www.nature.com/articles/s41598-020-59646-4) (original code: https://github.com/seowxft/predictive-inference-task, CC BY-NC 4.0; a lab version was originally provided by Vaghi et al., 2017). The task software is not part of this release: this repository contains the analysis code and the data only. The design and the settings needed to describe the task are given above and in the paper.
 
 ## Citation
 
