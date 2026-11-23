@@ -82,7 +82,7 @@ Only the analysis files listed below are shared. Raw exports are not shared to p
 
 - **Trials:** The task had 300 trials (3 blocks of 100). In the trial-level files the last trial of each block (`ID` = 100) is removed, because no `action` (the change of the bucket position to the next trial) can be computed for it. Every participant therefore has 3 x 99 = 297 trials, and `ID` runs from 1 to 99 within each block.
 - **Participants:** The trial-level files and the HGF file contain 467 participants. `composites_data.csv` contains the 462 participants analysed in the paper. The five additional participants (`S114`, `S191`, `S216`, `S301`, `S415`) have task data but no attitude composites, because the composites were computed for complete cases only (see `code/R/04 Factor and composite scores.Rmd`). They are not part of the analyses.
-- **Primary analyses:** The primary models adjust for age, gender and education and use N = 448, because participants who selected "Other" or did not disclose their gender are excluded from them (see the paper).
+- **Primary analyses:** The primary models adjust for age, gender and education and use N = 448, because participants who selected "Other" or did not disclose their gender are excluded from them.
 
 ### Variables
 
