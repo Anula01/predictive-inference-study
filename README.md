@@ -48,7 +48,7 @@ Further configuration values: `maxNoChangeCount` = 30, `slowTrialCount` = 5, `sl
 |       |-- .Rprofile                        # activates renv
 |       |-- renv.lock                        # package versions
 |       |-- renv/                            # renv setup
-|       |-- 01 Preprocessing.qmd             # raw exports -> cleaned files
+|       |-- 01 Preprocessing.qmd             # raw (pseudonymised) exports
 |       |-- 02 Data Checks.Rmd               # data quality checks
 |       |-- 03 Descriptives.Rmd              # descriptive statistics
 |       |-- 04 Factor and composite scores.Rmd   # scale composites, factor analysis
