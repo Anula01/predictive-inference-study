@@ -20,6 +20,10 @@ The analyses cover:
 
 ## Task settings
 
+<p align="center"><img src="figures/task_overview.png" alt="Predictive-inference task and generative structure" width="700"/></p>
+
+*Predictive-inference task and generative structure (Figure 1 of the paper).*
+
 The task was a browser-based predictive-inference task.
 
 | Setting | Value | Configuration key |
