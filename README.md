@@ -16,7 +16,7 @@ The analyses cover:
 
 - exploratory factor analysis of the attitude measures (dogmatic intolerance, authoritarianism, political orientation),
 - model-agnostic behaviour: mean inference, learning rate, confidence, metacognitive sensitivity and calibration,
-- computational modelling with the extended hierarchical Gaussian filter of Mikuš et al. (2025), and its association with radical attitudes.
+- computational modelling with the extended hierarchical Gaussian filter of [Mikuš et al. (2025)](https://doi.org/10.1016/j.biopsych.2024.08.021), and its association with radical attitudes.
 
 ## Task settings
 
