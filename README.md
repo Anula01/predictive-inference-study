@@ -5,7 +5,7 @@
 Analysis code and data for the study **"Certain Minds in an Uncertain World? Exploring Computational Signatures of Belief Updating in Individuals Holding Radical Attitudes"** (Knorr, Podolin, Starlinger, Kossowska & Mikuš).
 
 - Preprint: TODO (PsyArXiv link / DOI)
-- Paper: TODO (journal DOI, after publication)
+- Paper: (journal DOI to be added after publication)
 - Task software: see [Task software](#task-software) (the task code is not part of this release)
 
 ## Overview
