@@ -28,7 +28,6 @@ repository-code: "https://github.com/Anula01/predictive-inference-study"
 license: MIT  # code license; must match the LICENSE file in the repository (data: CC-BY-4.0, state it in the README)
 version: "1.0.0"  # must match the GitHub release tag
 date-released: "2026-11-23"  # update to the actual release date (YYYY-MM-DD)
-# doi: "10.5281/zenodo.XXXXXXX"  # add after Zenodo has minted the DOI (see note below)
 keywords:
   - predictive inference
   - radical attitudes

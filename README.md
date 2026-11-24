@@ -1,11 +1,7 @@
 # Certain Minds in an Uncertain World? Exploring Computational Signatures of Belief Updating in Individuals Holding Radical Attitudes
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.XXXXXXX.svg)](https://doi.org/10.5281/zenodo.XXXXXXX)
-
 Analysis code and data for the study **"Certain Minds in an Uncertain World? Exploring Computational Signatures of Belief Updating in Individuals Holding Radical Attitudes"** (Knorr, Podolin, Starlinger, Kossowska & Mikuš).
 
-- Preprint: TODO (PsyArXiv link / DOI)
-- Paper: (journal DOI to be added after publication)
 - Task software: see [Task software](#task-software) (the task code is not part of this release)
 
 ## Overview
@@ -173,9 +169,8 @@ The task was implemented as a web application hosted on Firebase, built by Ferdi
 
 ## Citation
 
-If you use this code or data, please cite the archived version on Zenodo
-(DOI: 10.5281/zenodo.XXXXXXX) and the associated paper. Citation metadata
-is also provided in CITATION.cff.
+If you use this code or data, please cite this repository and the associated paper.
+Citation metadata is also provided in CITATION.cff.
 
 ## License
 

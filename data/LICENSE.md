@@ -7,7 +7,7 @@ You are free to share (copy and redistribute the material in any medium or forma
 
 Full license text: https://creativecommons.org/licenses/by/4.0/legalcode
 
-Please cite the archived version of this repository (Zenodo DOI: 10.5281/zenodo.XXXXXXX) and the associated paper:
+Please cite this repository (https://github.com/Anula01/predictive-inference-study) and the associated paper:
 Knorr, A., Podolin, N., Starlinger, A., Kossowska, M., & Mikuš, N. Certain Minds in an Uncertain World? Exploring Computational Signatures of Belief Updating in Individuals Holding Radical Attitudes.
 
 The data contain no direct identifiers. Participant IDs are random study IDs. Please do not attempt to re-identify participants.
