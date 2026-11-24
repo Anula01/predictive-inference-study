@@ -22,7 +22,7 @@ The analyses cover:
 
 <p align="center"><img src="figures/task_overview.png" alt="Predictive-inference task and generative structure" width="700"/></p>
 
-*Predictive-inference task and generative structure (Figure 1 of the paper).*
+*Predictive-inference task and generative structure.*
 
 The task was a browser-based predictive-inference task.
 
