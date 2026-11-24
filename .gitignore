@@ -52,3 +52,4 @@ rsconnect/
 *.docx
 ~$*
 .vscode/
+code/R/fig1.png
