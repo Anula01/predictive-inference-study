@@ -48,11 +48,11 @@ Further configuration values: `maxNoChangeCount` = 30, `slowTrialCount` = 5, `sl
 |       |-- .Rprofile                        # activates renv
 |       |-- renv.lock                        # package versions
 |       |-- renv/                            # renv setup
-|       |-- 01 Preprocessing.qmd             # raw exports -> cleaned files (needs raw data, not released)
-|       |-- 02 Data Checks.Rmd               # data quality checks (needs raw data, not released)
+|       |-- 01 Preprocessing.qmd             # raw exports -> cleaned files
+|       |-- 02 Data Checks.Rmd               # data quality checks
 |       |-- 03 Descriptives.Rmd              # descriptive statistics
-|       |-- 04 Factor and composite scores.Rmd   # scale composites, factor analysis (needs item-level data, not released)
-|       |-- 05 Main analyses.Rmd             # behavioural and HGF analyses (runs from the released files)
+|       |-- 04 Factor and composite scores.Rmd   # scale composites, factor analysis
+|       |-- 05 Main analyses.Rmd             # behavioural and HGF analyses
 |       |-- helper_functions.R               # helper functions, including run_models()
 |       |-- models/
 |           |-- ehgf_jget_full.stan          # Stan implementation of the extended HGF
@@ -60,16 +60,22 @@ Further configuration values: `maxNoChangeCount` = 30, `slowTrialCount` = 5, `sl
 |-- data/
     |-- LICENSE.md                           # CC BY 4.0 (data)
     |-- L122136/
+        |-- experiment_results.csv       # raw task export (pseudonymised)
+        |-- questionnaire_data.csv       # raw questionnaire export (pseudonymised, free text removed)
+        |-- mood_data.csv                # raw in-task mood ratings (pseudonymised)
         |-- cleaned/
             |-- modelling_data.csv           # trial-level task data
             |-- composites_data.csv          # participant-level attitude composites, factor scores, demographics
             |-- HGF_Model_output.csv         # fitted HGF parameters per participant
             |-- Ehgf_taskData2.csv           # HGF belief trajectories per trial
+            |-- task_clean.csv               # cleaned task data (output of script 01)
+            |-- questionnaire_clean.csv      # cleaned questionnaire data (output of script 01)
+            |-- mood_clean.csv               # cleaned mood ratings (output of script 01)
 ```
 
 ## Data
 
-Only the analysis files listed below are shared. Raw exports are not shared to protect participants' privacy. Participant identifiers were replaced by random study IDs (`S001`, `S002`, ...), which are consistent across all files; Prolific IDs are not included and the mapping is not published.
+All files needed to rerun the analyses are shared: raw exports (in `data/L122136/`), cleaned files (in `data/L122136/cleaned/`) and analysis files. Free-text answers were removed (the column `feedback` in the questionnaire files is empty). Participant identifiers were replaced by random study IDs: `S001`, `S002`, ... for the 467 participants in the cleaned data and `X0001`, `X0002`, ... for participants who did not complete the study or were excluded (they appear only in the raw files; script `01` applies the exclusions). The IDs are consistent across all files; Prolific IDs are not included and the mapping is not published.
 
 | File | Level | Participants | Rows | Content |
 |------|-------|--------------|------|---------|
@@ -77,6 +83,12 @@ Only the analysis files listed below are shared. Raw exports are not shared to p
 | `composites_data.csv` | participant | 462 | 1 per participant | attitude scale composites and factor scores, demographics |
 | `HGF_Model_output.csv` | participant | 467 | 1 per participant | fitted HGF parameters |
 | `Ehgf_taskData2.csv` | trial | 467 | 297 per participant | task data and HGF belief trajectories |
+| `experiment_results.csv` | event | 748 | 185,600 in total | raw task export, including participants who did not complete the study or were excluded |
+| `questionnaire_data.csv` | participant | 972 | 979 in total | raw questionnaire export, including participants who did not complete the task |
+| `mood_data.csv` | rating | 774 | 7,781 in total | raw in-task mood ratings |
+| `task_clean.csv` | trial | 467 | 140,100 in total | cleaned task data after exclusions (output of script `01`) |
+| `questionnaire_clean.csv` | participant | 467 | 1 per participant | cleaned questionnaire data after exclusions (output of script `01`) |
+| `mood_clean.csv` | rating | 467 | 5,616 in total | cleaned mood ratings (output of script `01`) |
 
 ### Participants and trials
 
@@ -145,7 +157,7 @@ Requirements: R 4.5.0 and the package versions recorded in `code/R/renv.lock`.
 3. Install the packages with `renv::restore()`.
 4. Open `05 Main analyses.Rmd` and knit it, or run all chunks from the top. The chunks depend on each other (the data are loaded in the first chunks), so run them in order. Data paths are relative (`../../data/...`), so run the file from `code/R/`, which is the default when knitting.
 
-Scripts `01`, `02` and `04` need raw or item-level data that cannot be shared, so they are included for transparency but cannot be rerun with this repository. `05 Main analyses.Rmd` runs from the shared files. 
+Scripts `01` to `05` can all be run from the shared files. Run them in numerical order: `01` reads the raw exports and writes the cleaned files, `02` to `04` check and describe the data and compute the composite and factor scores, and `05` runs the main analyses. Script `04` takes about 25 minutes.
 
 Main packages: `tidyverse`, `lme4`, `lmerTest`, `parameters`, `effectsize`, `Hmisc`, `HLMdiag`.
 
