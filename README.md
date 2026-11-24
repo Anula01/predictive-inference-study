@@ -52,7 +52,7 @@ Further configuration values: `maxNoChangeCount` = 30, `slowTrialCount` = 5, `sl
 |       |-- .Rprofile                        # activates renv
 |       |-- renv.lock                        # package versions
 |       |-- renv/                            # renv setup
-|       |-- 01 Preprocessing.qmd             # raw (pseudonymised) exports
+|       |-- 01 Preprocessing.qmd             # raw exports
 |       |-- 02 Data Checks.Rmd               # data quality checks
 |       |-- 03 Descriptives.Rmd              # descriptive statistics
 |       |-- 04 Factor and composite scores.Rmd   # scale composites, factor analysis
@@ -64,9 +64,9 @@ Further configuration values: `maxNoChangeCount` = 30, `slowTrialCount` = 5, `sl
 |-- data/
     |-- LICENSE.md                           # CC BY 4.0 (data)
     |-- L122136/
-        |-- experiment_results.csv       # raw task export (pseudonymised)
-        |-- questionnaire_data.csv       # raw questionnaire export (pseudonymised, free text removed)
-        |-- mood_data.csv                # raw in-task mood ratings (pseudonymised)
+        |-- experiment_results.csv       # raw task export
+        |-- questionnaire_data.csv       # raw questionnaire export (free text removed)
+        |-- mood_data.csv                # raw in-task mood ratings
         |-- cleaned/
             |-- modelling_data.csv           # trial-level task data
             |-- composites_data.csv          # participant-level attitude composites, factor scores, demographics
@@ -79,7 +79,7 @@ Further configuration values: `maxNoChangeCount` = 30, `slowTrialCount` = 5, `sl
 
 ## Data
 
-All files needed to rerun the analyses are shared: raw exports (in `data/L122136/`), cleaned files (in `data/L122136/cleaned/`) and analysis files. Free-text answers were removed (the column `feedback` in the questionnaire files is empty). Participant identifiers were replaced by random study IDs: `S001`, `S002`, ... for the 467 participants in the cleaned data and `X0001`, `X0002`, ... for participants who did not complete the study or were excluded (they appear only in the raw files; script `01` applies the exclusions). The IDs are consistent across all files; Prolific IDs are not included and the mapping is not published.
+All files needed to rerun the analyses are shared: raw exports (in `data/L122136/`), cleaned files (in `data/L122136/cleaned/`) and analysis files. The data are anonymized. Free-text answers were removed (the column `feedback` in the questionnaire files is empty). Participant identifiers were replaced by random study IDs: `S001`, `S002`, ... for the 467 participants in the cleaned data and `X0001`, `X0002`, ... for participants who did not complete the study or were excluded (they appear only in the raw files; script `01` applies the exclusions). The IDs are consistent across all files; Prolific IDs are not included and cannot be recovered.
 
 | File | Level | Participants | Rows | Content |
 |------|-------|--------------|------|---------|
@@ -106,7 +106,7 @@ All files needed to rerun the analyses are shared: raw exports (in `data/L122136
 
 | Variable | Description |
 |----------|-------------|
-| `subject_id` | pseudonymous participant ID (`S001`, ...), used to join the files |
+| `subject_id` | anonymous participant ID (`S001`, ...), used to join the files |
 | `Stage` | task block (0, 1, 2) |
 | `ID` | trial number within the block (1-99, see above) |
 | `Mean` | true latent mean of the generative distribution (degrees) |
@@ -145,7 +145,7 @@ The learning rate used in the analyses is `action / pe` (trials with `pe` = 0 ar
 
 | Variable | Description |
 |----------|-------------|
-| `subject_id` | pseudonymous participant ID |
+| `subject_id` | anonymous participant ID |
 | `age`, `gender`, `education` | demographics |
 | `lc_gen`, `lc_eco`, `lc_soc` | self-reported political orientation (overall, economic, social) from 0 (liberal) to 100 (conservative) |
 | `demo_id`, `repub_id` | identification with the values and goals of the Democratic / Republican Party, from 1 (not at all) to 7 (very much) |
